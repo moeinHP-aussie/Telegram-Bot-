@@ -1,5 +1,15 @@
 # 🍷 SongBartender Bot
-
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10+-blue.svg" alt="Python Version">
+  <img src="https://img.shields.io/badge/Framework-Telethon-0088cc.svg" alt="Telethon">
+  <img src="https://img.shields.io/badge/Database-SQLite-lightgrey.svg" alt="Database">
+  <img src="https://img.shields.io/badge/Async-aiosqlite-purple.svg" alt="Async DB">
+  <img src="https://img.shields.io/badge/Search-Fuzzy%20Matching-yellow.svg" alt="Fuzzy Search">
+  <img src="https://img.shields.io/badge/Logic-AND%20%7C%20OR-orange.svg" alt="Logic System">
+  <img src="https://img.shields.io/badge/Ranking-Weighted%20Scoring-green.svg" alt="Ranking">
+  <img src="https://img.shields.io/badge/Architecture-Event--Driven-red.svg" alt="Architecture">
+  <img src="https://img.shields.io/badge/Platform-Telegram%20Bot-26A5E4.svg" alt="Platform">
+</p>
 A smart Telegram music discovery bot that helps users find songs based on **mood, tags, artists, and fuzzy search queries** — just like a bartender mixing the perfect drink, but for music.
 
 🔗 **Bot:** [https://t.me/songbartenderbot](https://t.me/songbartenderbot)
