@@ -9,7 +9,16 @@ env_path = os.path.join(BASE_DIR, '.env')
 if os.path.exists(env_path):
     with open(env_path, 'r', encoding='utf-8', errors='ignore') as f:
         load_dotenv(stream=StringIO(f.read()))
+        
+# تشخیص اینکه کد روی سرور رندر اجرا میشه یا لوکال
+# روی رندر، ما یک پوشه به اسم data می‌سازیم که به دیسک دائمی وصله
+if os.path.exists('/data'):
+    STORAGE_DIR = '/data'
+else:
+    STORAGE_DIR = BASE_DIR
 
+# آدرس‌دهی دقیق فایل دیتابیس
+DB_PATH = os.path.join(STORAGE_DIR, 'music_archive.db')
 ADMIN_ID = 157537833  # آیدی عددی معین
 
 try:
@@ -22,8 +31,11 @@ except (TypeError, ValueError):
     print("Error: Please check your .env file for API_ID, API_HASH, BOT_TOKEN and CHANNEL_ID.")
     exit()
 
-bot_client = TelegramClient('bot_session', API_ID, API_HASH)
-user_client = TelegramClient('user_session', API_ID, API_HASH)
+#bot_client = TelegramClient('bot_session', API_ID, API_HASH)
+#user_client = TelegramClient('user_session', API_ID, API_HASH)
+bot_client = TelegramClient(os.path.join(STORAGE_DIR, 'bot_session'), API_ID, API_HASH)
+user_client = TelegramClient(os.path.join(STORAGE_DIR, 'user_session'), API_ID, API_HASH)
+
 
 # تگ‌های شخصی‌سازی شده
 ALL_TAGS = {
@@ -64,7 +76,7 @@ async def sync_database(event):
     """تابع همگام‌سازی دیتابیس - حل مشکل AttributeError و آپدیت تگ‌ها"""
     await event.edit("🔄 در حال اسکن کانال و آپدیت دیتابیس... لطفا صبور باش معین جان.")
     count = 0
-    async with aiosqlite.connect('music_archive.db') as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         async for msg in user_client.iter_messages(CHANNEL_ID):
             if msg.audio:
                 artist = "Unknown Artist"
@@ -130,7 +142,7 @@ async def show_artists(event, page, search_q=None):
     if search_q is not None: s['art_q'] = search_q
     current_q = s.get('art_q')
 
-    async with aiosqlite.connect('music_archive.db') as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute("SELECT artist, COUNT(*), MIN(msg_id) FROM songs GROUP BY artist") as c:
             all_data = await c.fetchall()
 
@@ -212,7 +224,7 @@ async def callback_handler(event):
         s['mode'] = 'ARTIST_SEARCH'; await event.respond("🔎 نام هنرمند:")
     elif data.startswith("sel_art:"):
         _, mid, page = data.split(":")
-        async with aiosqlite.connect('music_archive.db') as db:
+        async with aiosqlite.connect(DB_PATH) as db:
             async with db.execute("SELECT artist FROM songs WHERE msg_id = ?", (mid,)) as c:
                 row = await c.fetchone()
                 if row:
@@ -310,7 +322,7 @@ async def show_results(event, page, is_callback=True):
     
     # 1. گرفتن نتایج مستقیم از دیتابیس (SQL)
     q, p = build_query(uid)
-    async with aiosqlite.connect('music_archive.db') as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute(q, p) as c: 
             sql_rows = await c.fetchall()
             # تبدیل به لیست برای قابلیت تغییر
@@ -373,7 +385,7 @@ async def show_results(event, page, is_callback=True):
 
 async def create_playlist(event):
     uid = event.sender_id; s = user_states[uid]; q, p = build_query(uid)
-    async with aiosqlite.connect('music_archive.db') as db:
+    async with aiosqlite.connect(DB_PATH) as db:
         async with db.execute(q + " LIMIT 200", p) as c: songs = await c.fetchall()
     if not songs: return await event.respond("آهنگی با این فیلترها پیدا نشد.")
     sel = random.sample(songs, min(s['pl_count'], len(songs)))
@@ -385,7 +397,7 @@ async def create_playlist(event):
 
 async def main():
     try:
-        async with aiosqlite.connect('music_archive.db') as db:
+        async with aiosqlite.connect(DB_PATH) as db:
             await db.execute("CREATE TABLE IF NOT EXISTS songs (msg_id INTEGER PRIMARY KEY, artist TEXT, title TEXT, tags TEXT)")
             await db.execute("CREATE INDEX IF NOT EXISTS idx_art ON songs(artist)")
             await db.execute("CREATE INDEX IF NOT EXISTS idx_tit ON songs(title)")
