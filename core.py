@@ -2,6 +2,9 @@ import asyncio, aiosqlite, random, difflib, os, telethon, re
 from dotenv import load_dotenv
 from telethon import TelegramClient, events, Button
 from io import StringIO
+from fastapi import FastAPI
+import uvicorn
+import threading
 
 # --- [ تنظیمات و لود متغیرها ] ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -395,6 +398,17 @@ async def create_playlist(event):
         except: continue
     s['pl_count'] = None; await event.respond("نوش جان! 🍷", buttons=main_menu_btns(uid))
 
+app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"status": "Song Bartender Bot is running!"}
+
+def run_web():
+    # این تابع وب‌سرور صوری رو روی پورتی که رندر می‌خواد بالا میاره
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
+    
 async def main():
     try:
         async with aiosqlite.connect(DB_PATH) as db:
@@ -402,6 +416,8 @@ async def main():
             await db.execute("CREATE INDEX IF NOT EXISTS idx_art ON songs(artist)")
             await db.execute("CREATE INDEX IF NOT EXISTS idx_tit ON songs(title)")
             await db.commit()
+        # روشن کردن وب‌سرور صوری در پس‌زمینه
+        threading.Thread(target=run_web, daemon=True).start()
         await user_client.start(); await bot_client.start(bot_token=BOT_TOKEN)
         print("--- Bartender is Online! ---")
         await asyncio.gather(user_client.run_until_disconnected(), bot_client.run_until_disconnected())
