@@ -1,13 +1,12 @@
 # 🍷 SongBartender Bot
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10+-blue.svg" alt="Python Version">
+  <img src="https://img.shields.io/badge/Python-3.9+-blue.svg" alt="Python Version">
   <img src="https://img.shields.io/badge/Framework-Telethon-0088cc.svg" alt="Telethon">
   <img src="https://img.shields.io/badge/Database-SQLite-lightgrey.svg" alt="Database">
   <img src="https://img.shields.io/badge/Async-aiosqlite-purple.svg" alt="Async DB">
   <img src="https://img.shields.io/badge/Search-Fuzzy%20Matching-yellow.svg" alt="Fuzzy Search">
   <img src="https://img.shields.io/badge/Logic-AND%20%7C%20OR-orange.svg" alt="Logic System">
-  <img src="https://img.shields.io/badge/Ranking-Weighted%20Scoring-green.svg" alt="Ranking">
-  <img src="https://img.shields.io/badge/Architecture-Event--Driven-red.svg" alt="Architecture">
+  <img src="https://img.shields.io/badge/Architecture-Dual%20Client-red.svg" alt="Architecture">
   <img src="https://img.shields.io/badge/Platform-Telegram%20Bot-26A5E4.svg" alt="Platform">
 </p>
 A smart Telegram music discovery bot that helps users find songs based on **mood, tags, artists, and fuzzy search queries** — just like a bartender mixing the perfect drink, but for music.
@@ -19,7 +18,7 @@ A smart Telegram music discovery bot that helps users find songs based on **mood
 
 ## ✨ Overview
 
-**SongBartender** is a Telegram bot built with **Python + Telethon** that allows users to:
+**SongBartender** is an advanced Telegram bot built with **Python + Telethon** that allows users to:
 
 * Search songs by **name or artist**
 * Filter using **mood/style tags**
@@ -27,6 +26,10 @@ A smart Telegram music discovery bot that helps users find songs based on **mood
 * Select multiple artists
 * Generate **custom playlists**
 * Discover music through **fuzzy matching**
+
+Unlike standard bots, it uses a **Dual-Client Architecture**:
+1. **Bot Client:** Handles user interactions, UI, and inline buttons.
+2. **User Client:** Scans the channel, extracts audio metadata, and syncs the database.
 
 The bot uses a **locally optimized SQLite database** to store and retrieve songs efficiently from a Telegram channel.
 
@@ -44,16 +47,15 @@ The bot uses a **locally optimized SQLite database** to store and retrieve songs
   * Partial matches
   * Word-level matches
 
-### 🎭 Tag-Based Filtering
+### 🎭 Tag-Based Filtering & Education System
 
 * Users can:
-
   * ✅ Include tags
-  * ❌ Exclude tags
   * 🔄 Reset tags
 * Supports moods & genres like:
-
   * `sad`, `romantic`, `jazz`, `gospel`, `rock`, etc.
+* **Interactive Help Mode:** Users can toggle a "Learn Tags" mode to get Persian explanations and examples for what each tag means directly via inline alerts.
+* **Tag Counts:** Displays the exact number of songs available for each tag in Persian digits.
 
 ---
 
@@ -170,7 +172,7 @@ songs (
 * **Primary Key (msg_id)** → fast lookup
 * **LIKE queries with indexed text fields**
 * Minimal joins → single-table design
-* Async DB access using `aiosqlite`
+* Async DB access using `aiosqlite` (with timeout to prevent `database is locked` errors)
 
 ---
 
@@ -178,7 +180,7 @@ songs (
 
 Admin-only feature:
 
-* Scans Telegram channel messages
+* Scans Telegram channel messages via **User Client**
 * Extracts:
 
   * Audio metadata (artist/title)
@@ -204,7 +206,6 @@ Dynamic SQL generation based on user state:
 * Tag filters:
 
   * AND / OR logic
-* Excluded tags
 
 Example:
 
@@ -213,7 +214,6 @@ WHERE
   artist IN (...)
   AND (title LIKE ... OR artist LIKE ...)
   AND tags LIKE '%#sad%'
-  AND tags NOT LIKE '%#happy%'
 ```
 
 ---
@@ -255,7 +255,7 @@ Each user has a session state:
 ## 🧱 Tech Stack
 
 * **Python 3**
-* **Telethon** → Telegram API
+* **Telethon** → Telegram API (Dual client setup)
 * **aiosqlite** → async DB
 * **SQLite** → storage
 * **difflib** → fuzzy matching
@@ -271,17 +271,48 @@ Each user has a session state:
 
   * SQL (fast filtering)
   * Python (fuzzy refinement)
+* **Absolute Paths:** Used `os.path.join(BASE_DIR, ...)` for database and session files to prevent path resolution issues in Cron Jobs.
+* **Async Loop Management:** Used `asyncio.get_event_loop()` and `asyncio.gather()` to run both Bot and User clients concurrently without `attached to a different loop` errors.
 
 ---
 
-## 🚀 How It Works (Flow)
+## 🚀 Deployment Guide
 
-1. User sends input or selects filters
-2. Bot updates user state
-3. SQL query is dynamically built
-4. Results fetched & ranked
-5. Fuzzy matches added (if needed)
-6. Results displayed with pagination
+### 1. Prerequisites
+* Python 3.9+
+* A Telegram `API_ID` and `API_HASH` (from my.telegram.org)
+* A Bot Token (from @BotFather)
+* Channel ID (with negative sign, e.g., `-1001234567890`)
+
+### 2. Environment Setup
+Create a `.env` file in the root directory:
+```env
+API_ID=your_api_id
+API_HASH=your_api_hash
+BOT_TOKEN=your_bot_token
+CHANNEL_ID=-1001234567890
+```
+
+### 3. Generating User Session (Crucial)
+Because the bot requires a User Client to read channel messages, you must generate a `user_session.session` file locally:
+1. Install Telethon on your local machine: `pip install telethon`
+2. Run a simple script to login with your phone number.
+3. Once `user_session.session` is generated, upload it to your server alongside `core.py`.
+
+### 4. Running on Shared Hosting (cPanel / Cron Job)
+Shared hosting environments kill long-running processes. To keep the bot alive, use a Cron Job with `flock` to prevent multiple instances:
+
+**Cron Command (Every Minute):**
+```bash
+cd /home/username/moein_bot && flock -n /tmp/moein_bot.lock /usr/bin/python3 -u core.py >> bot.log 2>&1
+```
+
+### 5. Running on VPS / Dedicated Server
+For standard servers, simply run:
+```bash
+python3 core.py
+```
+*(Or use process managers like `PM2` or `Systemd` for 24/7 uptime).*
 
 ---
 
@@ -290,7 +321,7 @@ Each user has a session state:
 * ✅ SQLite instead of heavy DB → simplicity + speed
 * ✅ Hybrid search (SQL + Python) → better accuracy
 * ✅ Inline buttons UI → no typing complexity
-* ✅ Tag tri-state system (include/exclude/neutral)
+* ✅ Dual Client architecture → safe channel scraping + responsive bot UI
 
 ---
 
@@ -309,5 +340,3 @@ If you enjoy discovering music in a smarter way, give it a try:
 
 👉 [https://t.me/songbartenderbot](https://t.me/songbartenderbot)
 🎧 [https://t.me/songbartender](https://t.me/songbartender)
-
-
